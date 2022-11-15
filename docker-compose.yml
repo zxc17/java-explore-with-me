@@ -1,7 +1,7 @@
 version: '3.1'
 services:
   stats-server:
-    build: stats-server/
+    build: stats-server
     image: stats-server
     container_name: stats-server
     ports:
@@ -27,7 +27,7 @@ services:
 
 
   ewm-service:
-    build: emw-service/
+    build: emw-service
     image: emw-service
     container_name: emw-service
     ports:

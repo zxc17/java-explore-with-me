@@ -55,7 +55,7 @@ public class EventController {
             @PathVariable Long userId,
             @RequestBody UpdateEventRequest updateEventRequest
     ) {
-        log.info("Endpoint 'Update events by initiator' " +
+        log.info("Endpoint 'Update event by initiator' " +
                 "RequestBody={}, userID={}.", updateEventRequest, userId);
         return eventService.update(updateEventRequest, userId);
     }
@@ -65,7 +65,7 @@ public class EventController {
             @PathVariable Long userId,
             @RequestBody NewEventDto newEventDto
     ) {
-        log.info("Endpoint 'Add events' " +
+        log.info("Endpoint 'Add event' " +
                 "RequestBody={}, userID={}.", newEventDto, userId);
         if (newEventDto.getPaid() == null)
             newEventDto.setPaid(false);
