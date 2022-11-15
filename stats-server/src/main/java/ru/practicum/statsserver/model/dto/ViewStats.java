@@ -1,10 +1,10 @@
 package ru.practicum.statsserver.model.dto;
 
-import org.springframework.format.annotation.DateTimeFormat;
+import lombok.Getter;
+import lombok.Setter;
 
-import javax.validation.constraints.NotBlank;
-import java.time.LocalDateTime;
-
+@Getter
+@Setter
 public class ViewStats {
     private String app;
     private String uri;

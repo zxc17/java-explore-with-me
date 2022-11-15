@@ -1,15 +1,24 @@
 package ru.practicum.ewmservice.model.dto;
 
-import org.springframework.format.annotation.DateTimeFormat;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * Краткая информация о событии
+ */
+@Getter
+@Setter
+@Builder
 public class EventShortDto {
     private Long id;
     private String annotation;
     private CategoryDto category;
     private Long confirmedRequests;
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime eventDate;
     private UserShortDto initiator;
     private Boolean paid;

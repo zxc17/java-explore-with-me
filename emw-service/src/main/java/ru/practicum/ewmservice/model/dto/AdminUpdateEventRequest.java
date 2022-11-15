@@ -1,17 +1,23 @@
 package ru.practicum.ewmservice.model.dto;
 
-import org.springframework.format.annotation.DateTimeFormat;
-import ru.practicum.ewmservice.model.Location;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+/**
+ * Информация для редактирования события администратором. Все поля необязательные. Значение полей не валидируется.
+ */
+@Getter
+@Setter
 public class AdminUpdateEventRequest {
     private String annotation;
     private Long category;
     private String description;
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime eventDate;
-    private Location location;
+    private LocationDto location;
     private Boolean paid;
     private Integer participantLimit;
     private Boolean requestModeration;
