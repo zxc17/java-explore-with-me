@@ -8,12 +8,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import ru.practicum.ewmservice.model.dto.AdminUpdateEventRequest;
 import ru.practicum.ewmservice.model.dto.EventFullDto;
 import ru.practicum.ewmservice.model.dto.EventShortDto;
 import ru.practicum.ewmservice.model.dto.NewEventDto;
+import ru.practicum.ewmservice.model.dto.ParticipationRequestDto;
 import ru.practicum.ewmservice.model.dto.UpdateEventRequest;
 import ru.practicum.ewmservice.service.EventService;
 
@@ -96,10 +99,80 @@ public class EventController {
         return eventService.cancel(userId, eventId);
     }
 
+    @GetMapping("/users/{userId}/events/{eventId}/requests")
+    public ParticipationRequestDto findRequestToEventByUser(
+            @PathVariable Long userId,
+            @PathVariable Long eventId
+    ) {
+        log.info("Endpoint 'Find an event request for current user' " +
+                "userID={}, eventID={}.", userId, eventId);
+        return eventService.findRequestToEventByUser(userId, eventId);
+    }
+
+    @PatchMapping("/users/{userId}/events/{eventId}/requests/{reqId}/confirm")
+    public ParticipationRequestDto confirmRequestByInitiator(
+            @PathVariable Long userId,
+            @PathVariable Long eventId,
+            @PathVariable Long reqId
+    ) {
+        log.info("Endpoint 'Confirm an event request by initiator' " +
+                "initiatorID={}, eventID={}, requestID={}.", userId, eventId, reqId);
+        return eventService.confirmRequestByInitiator(userId, eventId, reqId);
+    }
+
+    @PatchMapping("/users/{userId}/events/{eventId}/requests/{reqId}/reject")
+    public ParticipationRequestDto rejectRequestByInitiator(
+            @PathVariable Long userId,
+            @PathVariable Long eventId,
+            @PathVariable Long reqId
+    ) {
+        log.info("Endpoint 'Reject an event request by initiator' " +
+                "initiatorID={}, eventID={}, requestID={}.", userId, eventId, reqId);
+        return eventService.rejectRequestByInitiator(userId, eventId, reqId);
+    }
+
 
     /* ****************** */
     /* *** ADMIN PART *** */
     /* ****************** */
 
+    @GetMapping("/admin/events")
+    public List<EventFullDto> findByAdmin(
+            @RequestParam(required = false) List<Long> users,
+            @RequestParam(required = false) List<String> states,
+            @RequestParam(required = false) List<Long> categories,
+            @RequestParam(required = false) String rangeStart,
+            @RequestParam(required = false) String rangeEnd,
+            @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
+            @Positive @RequestParam(required = false, defaultValue = "10") Integer size
+    ) {
+        log.info("Endpoint 'Find events by admin' " +
+                        "users={}, states={}, categories={}, rangeStart={}, rangeEnd={}, from={}, size={}.",
+                users, states, categories, rangeStart, rangeEnd, from, size);
+        return eventService.findByAdmin(users, states, categories, rangeStart, rangeEnd, from, size);
+    }
 
+    @PutMapping("/admin/events/{eventId}")
+    public EventFullDto updateByAdmin(
+            @PathVariable Long eventId,
+            @RequestBody AdminUpdateEventRequest updateEventDto
+    ) {
+        log.info("Endpoint 'Update event by admin' " +
+                "eventID={}, RequestBody={}.", eventId, updateEventDto);
+        return eventService.updateByAdmin(updateEventDto, eventId);
+    }
+
+    @PatchMapping("/admin/events/{eventId}/publish")
+    public EventFullDto confirmRequestByAdmin(@PathVariable Long eventId) {
+        log.info("Endpoint 'Confirm event' " +
+                "eventID={}.", eventId);
+        return eventService.confirmRequestByAdmin(eventId);
+    }
+
+    @PatchMapping("/admin/events/{eventId}/reject")
+    public EventFullDto reject(@PathVariable Long eventId) {
+        log.info("Endpoint 'Reject event' " +
+                "eventID={}.", eventId);
+        return eventService.reject(eventId);
+    }
 }

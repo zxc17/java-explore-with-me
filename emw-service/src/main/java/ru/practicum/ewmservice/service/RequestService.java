@@ -7,6 +7,7 @@ import ru.practicum.ewmservice.customException.ValidationForbiddenException;
 import ru.practicum.ewmservice.customException.ValidationNotFoundException;
 import ru.practicum.ewmservice.mapper.RequestMapper;
 import ru.practicum.ewmservice.model.Event;
+import ru.practicum.ewmservice.model.EventState;
 import ru.practicum.ewmservice.model.Request;
 import ru.practicum.ewmservice.model.RequestState;
 import ru.practicum.ewmservice.model.User;
@@ -45,6 +46,12 @@ public class RequestService {
                         .format("Event with id=%s not found.", eventId)));
         if (userId.equals(event.getInitiator().getId()))
             throw new ValidationConflictException("Cannot submit a request to participate in own event.");
+        if (event.getState() != EventState.PUBLISHED)
+            throw new ValidationConflictException(String
+                    .format("Requests are only accepted for published events. EventState=%s", event.getState()));
+        long confirmedRequests = requestRepository.countByEvent_IdAndState(eventId, RequestState.CONFIRMED);
+        if (confirmedRequests >= event.getParticipantLimit())
+            throw new ValidationConflictException("The maximum number of participants has been reached.");
         Request request = Request.builder()
                 .requester(requester)
                 .event(event)
