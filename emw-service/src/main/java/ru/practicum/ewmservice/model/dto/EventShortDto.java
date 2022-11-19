@@ -7,6 +7,8 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
+
 /**
  * Краткая информация о событии
  */
@@ -18,7 +20,7 @@ public class EventShortDto {
     private String annotation;
     private CategoryDto category;
     private Long confirmedRequests;
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = DATE_PATTERN)
     private LocalDateTime eventDate;
     private UserShortDto initiator;
     private Boolean paid;

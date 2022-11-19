@@ -7,6 +7,8 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
+
 /**
  * Полная информация о событии
  */
@@ -18,16 +20,16 @@ public class EventFullDto {
     private String annotation;
     private CategoryDto category;
     private Long confirmedRequests;
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = DATE_PATTERN)
     private LocalDateTime createdOn;
     private String description;
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = DATE_PATTERN)
     private LocalDateTime eventDate;
     private UserShortDto initiator;
-    private LocationDto location;
+    private Location location;
     private Boolean paid;
     private Integer participantLimit;
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = DATE_PATTERN)
     private LocalDateTime publishedOn;
     private Boolean requestModeration;
     private String state;

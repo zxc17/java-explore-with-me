@@ -3,6 +3,8 @@ package ru.practicum.ewmservice.customException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
+
 public class ErrorResponse {
     String status;  // Статус.
     String message; // Описание ошибки.
@@ -13,7 +15,7 @@ public class ErrorResponse {
         this.status = status;
         this.message = message;
         this.reason = reason;
-        this.timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        this.timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern(DATE_PATTERN));
     }
 
     public String getMessage() {

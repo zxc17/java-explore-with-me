@@ -7,6 +7,8 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
+
 /**
  * Заявка на участие в событии
  */
@@ -15,7 +17,7 @@ import java.time.LocalDateTime;
 @Builder
 public class ParticipationRequestDto {
     private Long id;
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = DATE_PATTERN)
     private LocalDateTime created;
     private Long event;
     private Long requester;

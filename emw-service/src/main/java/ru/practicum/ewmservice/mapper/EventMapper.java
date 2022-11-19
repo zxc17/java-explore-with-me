@@ -4,13 +4,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import ru.practicum.ewmservice.customException.ValidationNotFoundException;
 import ru.practicum.ewmservice.model.Event;
-import ru.practicum.ewmservice.model.Location;
 import ru.practicum.ewmservice.model.RequestState;
 import ru.practicum.ewmservice.model.dto.EventFullDto;
 import ru.practicum.ewmservice.model.dto.EventShortDto;
+import ru.practicum.ewmservice.model.dto.Location;
 import ru.practicum.ewmservice.model.dto.NewEventDto;
 import ru.practicum.ewmservice.storage.CategoryRepository;
-import ru.practicum.ewmservice.storage.LocationRepository;
 import ru.practicum.ewmservice.storage.RequestRepository;
 
 @Component
@@ -18,20 +17,10 @@ import ru.practicum.ewmservice.storage.RequestRepository;
 public class EventMapper {
     private final CategoryRepository categoryRepository;
     private final RequestRepository requestRepository;
-    private final LocationRepository locationRepository;
     private final CategoryMapper categoryMapper;
     private final UserMapper userMapper;
-    private final LocationMapper locationMapper;
 
     public Event toEvent(NewEventDto newEventDto) {
-        // TODO #Location
-        //  В текущей версии программы нет выбора локации из существующего списка.
-        //  Я решил, что будет лучше сделать задел на возможное улучшение,
-        //  сразу завести сущность и таблицу для хранения локации.
-        //  В текущей версии при создании события всегда создается новая локация.
-        Location location = locationMapper.toLocation(newEventDto.getLocation());
-        location = locationRepository.save(location);
-
         return Event.builder()
                 .annotation(newEventDto.getAnnotation())
                 .category(categoryRepository.findById(newEventDto.getCategory())
@@ -39,7 +28,8 @@ public class EventMapper {
                                 .format("Category with id=%s not found.", newEventDto.getCategory()))))
                 .description(newEventDto.getDescription())
                 .eventDate(newEventDto.getEventDate())
-                .location(location)
+                .locationLat(newEventDto.getLocation().getLat())
+                .locationLon(newEventDto.getLocation().getLon())
                 .paid(newEventDto.getPaid())
                 .participantLimit(newEventDto.getParticipantLimit())
                 .requestModeration(newEventDto.getRequestModeration())
@@ -57,7 +47,7 @@ public class EventMapper {
                 .description(event.getDescription())
                 .eventDate(event.getEventDate())
                 .initiator(userMapper.toUserShortDto(event.getInitiator()))
-                .location(locationMapper.toLocationDto(event.getLocation()))
+                .location(new Location(event.getLocationLat(), event.getLocationLon()))
                 .paid(event.getPaid())
                 .participantLimit(event.getParticipantLimit())
                 .publishedOn(event.getPublishedOn())

@@ -28,7 +28,7 @@ public class RequestService {
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
 
-    public List<ParticipationRequestDto> getByRequesterId(Long userId) {
+    public List<ParticipationRequestDto> findByRequesterId(Long userId) {
         if (!userRepository.existsById(userId))
             throw new ValidationNotFoundException(String
                     .format("User with id=%s not found.", userId));
@@ -74,7 +74,7 @@ public class RequestService {
         if (!userId.equals(request.getRequester().getId()))
             throw new ValidationForbiddenException(String
                     .format("User id=%s not owner of request id=%s.", userId, requestId));
-        request.setState(RequestState.CANCELLED);
+        request.setState(RequestState.CANCELED);
         request = requestRepository.save(request);
         return requestMapper.toParticipationRequestDto(request);
     }

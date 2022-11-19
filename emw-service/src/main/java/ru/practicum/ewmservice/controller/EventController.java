@@ -100,13 +100,13 @@ public class EventController {
     }
 
     @GetMapping("/users/{userId}/events/{eventId}/requests")
-    public ParticipationRequestDto findRequestToEventByUser(
+    public List<ParticipationRequestDto> findRequestToEvent(
             @PathVariable Long userId,
             @PathVariable Long eventId
     ) {
-        log.info("Endpoint 'Find an event request for current user' " +
+        log.info("Endpoint 'Find requests for an event made by current user' " +
                 "userID={}, eventID={}.", userId, eventId);
-        return eventService.findRequestToEventByUser(userId, eventId);
+        return eventService.findRequestsToEvent(userId, eventId);
     }
 
     @PatchMapping("/users/{userId}/events/{eventId}/requests/{reqId}/confirm")

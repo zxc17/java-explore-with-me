@@ -13,6 +13,8 @@ import javax.validation.constraints.Positive;
 import javax.validation.constraints.PositiveOrZero;
 import java.time.LocalDateTime;
 
+import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
+
 /**
  * Данные для добавления нового события
  */
@@ -22,7 +24,8 @@ import java.time.LocalDateTime;
 public class NewEventDto {
 
     @NotBlank
-    @Min(value = 20) @Max(value = 2000)
+    @Min(value = 20)
+    @Max(value = 2000)
     private String annotation;
 
     @NotNull
@@ -30,15 +33,16 @@ public class NewEventDto {
     private Long category;
 
     @NotBlank
-    @Min(value = 20) @Max(value = 7000)
+    @Min(value = 20)
+    @Max(value = 7000)
     private String description;
 
     @NotNull
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = DATE_PATTERN)
     private LocalDateTime eventDate;
 
     @NotNull
-    private LocationDto location;
+    private Location location;
 
     private Boolean paid;
 
@@ -48,6 +52,7 @@ public class NewEventDto {
     private Boolean requestModeration;
 
     @NotBlank
-    @Min(value = 3) @Max(value = 120)
+    @Min(value = 3)
+    @Max(value = 120)
     private String title;
 }

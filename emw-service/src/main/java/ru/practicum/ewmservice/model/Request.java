@@ -19,6 +19,8 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import java.time.LocalDateTime;
 
+import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
+
 @Entity
 @Table(name = "requests")
 @Getter
@@ -42,7 +44,7 @@ public class Request {
     private Event event;
 
     @Column(name = "created")
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @DateTimeFormat(pattern = DATE_PATTERN)
     private LocalDateTime created;
 
     @Column(name = "status")

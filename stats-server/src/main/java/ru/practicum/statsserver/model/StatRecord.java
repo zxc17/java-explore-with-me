@@ -15,6 +15,8 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 import java.time.LocalDateTime;
 
+import static ru.practicum.statsserver.util.Constants.DATE_PATTERN;
+
 @Entity
 @Table(name = "statistics")
 @Getter
@@ -36,6 +38,6 @@ public class StatRecord {
     private String ip;
 
     @Column(name = "timestamp")
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @DateTimeFormat(pattern = DATE_PATTERN)
     private LocalDateTime timestamp;
 }

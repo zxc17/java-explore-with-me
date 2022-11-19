@@ -1,7 +1,7 @@
 package ru.practicum.ewmservice.service;
 
-import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,13 +30,13 @@ import ru.practicum.ewmservice.storage.EventRepository;
 import ru.practicum.ewmservice.storage.RequestRepository;
 import ru.practicum.ewmservice.storage.UserRepository;
 
-import javax.persistence.EntityManager;
-import javax.persistence.criteria.CriteriaBuilder;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
 
 @Service
 @RequiredArgsConstructor
@@ -47,7 +47,6 @@ public class EventService {
     private final CategoryRepository categoryRepository;
     private final RequestRepository requestRepository;
     private final RequestMapper requestMapper;
-    private final EntityManager entityManager;
 
     public List<EventShortDto> findAllByCurrentUser(Long userId, Integer from, Integer size) {
         if (!userRepository.existsById(userId))
@@ -146,15 +145,19 @@ public class EventService {
         return eventMapper.toEventFullDto(event);
     }
 
-    public ParticipationRequestDto findRequestToEventByUser(Long requesterId, Long eventId) {
-        if (!userRepository.existsById(requesterId))
+    public List<ParticipationRequestDto> findRequestsToEvent(Long initiatorId, Long eventId) {
+        if (!userRepository.existsById(initiatorId))
             throw new ValidationNotFoundException(String
-                    .format("User with id=%s not found.", requesterId));
-        if (!eventRepository.existsById(eventId))
-            throw new ValidationNotFoundException(String
-                    .format("Event with id=%s not found.", eventId));
-        Request request = requestRepository.findByRequester_IdAndEvent_Id(requesterId, eventId);
-        return requestMapper.toParticipationRequestDto(request);
+                    .format("User with id=%s not found.", initiatorId));
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ValidationNotFoundException(String
+                        .format("Event with id=%s not found.", eventId)));
+        if (!initiatorId.equals(event.getInitiator().getId()))
+            throw new ValidationForbiddenException(String
+                    .format("User id=%s is not the initiator of the event id=%s", initiatorId, eventId));
+        return requestRepository.findByEvent_Id(eventId).stream()
+                .map(requestMapper::toParticipationRequestDto)
+                .collect(Collectors.toList());
     }
 
     public ParticipationRequestDto confirmRequestByInitiator(Long initiatorId, Long eventId, Long reqId) {
@@ -207,42 +210,46 @@ public class EventService {
 
     public List<EventFullDto> findByAdmin(List<Long> users, List<String> states, List<Long> categories,
                                           String rangeStart, String rangeEnd, Integer from, Integer size) {
-        List<EventState> eventStates = new ArrayList<>();
-        for (String s : states) {
-            try {
-                eventStates.add(EventState.valueOf(s));
-            } catch (IllegalArgumentException e) {
-                //NOP
-            }
-        }
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        LocalDateTime start;
-        try {
-            start = LocalDateTime.parse(rangeStart, dtf);
-        } catch (IllegalArgumentException e) {
-            throw new ValidationDataException(String.format("Invalid data rangeStart=%s", rangeStart));
-        }
-        LocalDateTime end;
-        try {
-            end = LocalDateTime.parse(rangeEnd, dtf);
-        } catch (IllegalArgumentException e) {
-            throw new ValidationDataException(String.format("Invalid data rangeEnd=%s", rangeEnd));
-        }
 
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern(DATE_PATTERN);
         Pageable pageable = PageRequest.of(from / size, size);
 
-        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-        List<Predicate> ps = new ArrayList<>();
+        BooleanExpression findCriteria = Expressions.asBoolean(true).isTrue();
         if (users != null)
-            ps.add(QEvent.event.initiator.id.in(users));
-        BooleanExpression byUserId = QEvent.event.initiator.id.in(users);
-        BooleanExpression byStates = QEvent.event.state.in(eventStates);
-        BooleanExpression byCategories = QEvent.event.category.id.in(categories);
-        BooleanExpression byRangeStart = QEvent.event.eventDate.after(start);
-        BooleanExpression byRangeEnd = QEvent.event.eventDate.before(end);
-        Predicate predicate = byUserId.and(byStates).and(byCategories).and(byRangeStart).and(byRangeEnd);
-        predicate = criteriaBuilder.and();
-        Page<Event> events = eventRepository.findAll(predicate, pageable);
+            findCriteria = findCriteria.and(QEvent.event.initiator.id.in(users));
+        if (states != null) {
+            List<EventState> eventStates = new ArrayList<>();
+            for (String s : states) {
+                try {
+                    eventStates.add(EventState.valueOf(s));
+                } catch (IllegalArgumentException e) {
+                    s = null; // Заглушка для проверки стиля (не допускает пустого блока)
+                }
+            }
+            if (eventStates.size() > 0)
+                findCriteria = findCriteria.and(QEvent.event.state.in(eventStates));
+        }
+        if (categories != null)
+            findCriteria = findCriteria.and(QEvent.event.category.id.in(categories));
+        if (rangeStart != null) {
+            LocalDateTime start;
+            try {
+                start = LocalDateTime.parse(rangeStart, dtf);
+            } catch (IllegalArgumentException e) {
+                throw new ValidationDataException(String.format("Invalid data rangeStart=%s", rangeStart));
+            }
+            findCriteria = findCriteria.and(QEvent.event.eventDate.after(start));
+        }
+        if (rangeEnd != null) {
+            LocalDateTime end;
+            try {
+                end = LocalDateTime.parse(rangeEnd, dtf);
+            } catch (IllegalArgumentException e) {
+                throw new ValidationDataException(String.format("Invalid data rangeEnd=%s", rangeEnd));
+            }
+            findCriteria = findCriteria.and(QEvent.event.eventDate.before(end));
+        }
+        Page<Event> events = eventRepository.findAll(findCriteria, pageable);
         return events.stream()
                 .map(eventMapper::toEventFullDto)
                 .collect(Collectors.toList());
@@ -264,7 +271,8 @@ public class EventService {
         if (updateEventDto.getEventDate() != null)
             event.setEventDate(updateEventDto.getEventDate());
         if (updateEventDto.getLocation() != null)
-            event.setLocation(updateEventDto.getLocation());
+            event.setLocationLat(updateEventDto.getLocation().getLat());
+        event.setLocationLon(updateEventDto.getLocation().getLon());
         if (updateEventDto.getPaid() != null)
             event.setPaid(updateEventDto.getPaid());
         if (updateEventDto.getParticipantLimit() != null)

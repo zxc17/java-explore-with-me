@@ -19,6 +19,8 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import java.time.LocalDateTime;
 
+import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
+
 @Entity
 @Table(name = "events")
 @Getter
@@ -41,23 +43,25 @@ public class Event {
     private Category category;
 
     @Column(name = "created_on")
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @DateTimeFormat(pattern = DATE_PATTERN)
     private LocalDateTime createdOn;
 
     @Column(name = "description", length = 7000)
     private String description;
 
     @Column(name = "event_date")
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @DateTimeFormat(pattern = DATE_PATTERN)
     private LocalDateTime eventDate;
 
     @ManyToOne
     @JoinColumn(name = "initiator_id")
     private User initiator;
 
-    @ManyToOne
-    @JoinColumn(name = "location_id")
-    private Location location;
+    @Column(name = "location_lat")
+    private Double locationLat;
+
+    @Column(name = "location_lon")
+    private Double locationLon;
 
     @Column(name = "paid")
     private Boolean paid;
@@ -69,7 +73,7 @@ public class Event {
     private Boolean requestModeration;
 
     @Column(name = "published_on")
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @DateTimeFormat(pattern = DATE_PATTERN)
     private LocalDateTime publishedOn;
 
     @Column(name = "state")

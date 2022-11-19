@@ -39,7 +39,7 @@ public class RequestController {
     public List<ParticipationRequestDto> getByRequesterId(@PathVariable Long userId) {
         log.info("Endpoint 'Find requests for current user' " +
                 "userID={}.", userId);
-        return requestService.getByRequesterId(userId);
+        return requestService.findByRequesterId(userId);
     }
 
     @PostMapping("/users/{userId}/requests")

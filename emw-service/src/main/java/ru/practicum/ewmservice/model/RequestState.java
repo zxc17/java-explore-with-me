@@ -4,5 +4,5 @@ public enum RequestState {
     PENDING,
     CONFIRMED,
     REJECTED,
-    CANCELLED
+    CANCELED
 }

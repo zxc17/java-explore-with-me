@@ -10,6 +10,8 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
+import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
+
 /**
  * Данные для изменения информации о событии
  */
@@ -24,7 +26,7 @@ public class UpdateEventRequest {
     private Long categoryId;
     @Min(value = 20) @Max(value = 7000)
     private String description;
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = DATE_PATTERN)
     private LocalDateTime eventDate;
     private Boolean paid;
     private Integer participantLimit;
