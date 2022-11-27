@@ -46,7 +46,7 @@ public class Event {
     private String annotation;
 
     @ManyToOne
-    @JoinColumn(name = "category_id")
+    @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
     @Column(name = "created_on")
@@ -61,7 +61,7 @@ public class Event {
     private LocalDateTime eventDate;
 
     @ManyToOne
-    @JoinColumn(name = "initiator_id")
+    @JoinColumn(name = "initiator_id", nullable = false)
     private User initiator;
 
     @Column(name = "location_lat")

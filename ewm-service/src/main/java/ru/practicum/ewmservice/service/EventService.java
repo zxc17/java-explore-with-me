@@ -2,6 +2,7 @@ package ru.practicum.ewmservice.service;
 
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -28,10 +29,8 @@ import ru.practicum.ewmservice.model.dto.EventShortDto;
 import ru.practicum.ewmservice.model.dto.NewEventDto;
 import ru.practicum.ewmservice.model.dto.ParticipationRequestDto;
 import ru.practicum.ewmservice.model.dto.UpdateEventRequest;
-import ru.practicum.ewmservice.storage.CategoryRepository;
 import ru.practicum.ewmservice.storage.EventRepository;
 import ru.practicum.ewmservice.storage.RequestRepository;
-import ru.practicum.ewmservice.storage.UserRepository;
 import ru.practicum.ewmservice.util.CustomPageRequest;
 
 import java.time.LocalDateTime;
@@ -51,11 +50,14 @@ import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
 public class EventService {
     private final EventRepository eventRepository;
     private final EventMapper eventMapper;
-    private final UserRepository userRepository;
-    private final CategoryRepository categoryRepository;
+    private final UserService userService;
+    private final CategoryService categoryService;
+    private final RequestService requestService;
     private final RequestRepository requestRepository;
     private final RequestMapper requestMapper;
     private final StatsClient statsClient;
+    @Value("${time-before-event}") int tbe;
+    @Value("${time-before-event.admin}") int tbeForAdmin;
 
     public List<EventFullDto> findAll(String text,
                                       List<Long> categories,
@@ -127,9 +129,7 @@ public class EventService {
     }
 
     public EventFullDto findById(Long eventId, String uri, String ip) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Event with id=%s not found.", eventId)));
+        Event event = getEventById(eventId);
         if (event.getState() != EventState.PUBLISHED)
             throw new ValidationConflictException(String
                     .format("Event id=%s not published", eventId));
@@ -140,8 +140,7 @@ public class EventService {
     }
 
     public List<EventShortDto> findAllPrivate(Long userId, Integer from, Integer size) {
-        if (!userRepository.existsById(userId))
-            throw new ValidationNotFoundException(String.format("User with id=%s not found.", userId));
+        userService.getUserById(userId);
         Pageable pageable = CustomPageRequest.of(from, size);
         return eventRepository.findByInitiator_Id(userId, pageable).stream()
                 .map(eventMapper::toEventShortDto)
@@ -150,11 +149,8 @@ public class EventService {
 
     @Transactional
     public EventFullDto update(UpdateEventRequest updateEventRequest, Long userId) {
-        if (!userRepository.existsById(userId))
-            throw new ValidationNotFoundException(String.format("User with id=%s not found.", userId));
-        Event event = eventRepository.findById(updateEventRequest.getEventId())
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Event with id=%s not found.", updateEventRequest.getEventId())));
+        userService.getUserById(userId);
+        Event event = getEventById(updateEventRequest.getEventId());
         if (!userId.equals(event.getInitiator().getId()))
             throw new ValidationForbiddenException(String
                     .format("User id=%s is not the initiator of event id=%s", userId, event.getId()));
@@ -165,16 +161,14 @@ public class EventService {
         if (updateEventRequest.getAnnotation() != null)
             event.setAnnotation(updateEventRequest.getAnnotation());
         if (updateEventRequest.getCategoryId() != null)
-            event.setCategory(categoryRepository.findById(updateEventRequest.getCategoryId())
-                    .orElseThrow(() -> new ValidationNotFoundException(String
-                            .format("Category with id=%s not found.", updateEventRequest.getCategoryId()))));
+            event.setCategory(categoryService.getCategoryById(updateEventRequest.getCategoryId()));
         if (updateEventRequest.getDescription() != null)
             event.setDescription(updateEventRequest.getDescription());
         LocalDateTime newEventDate = updateEventRequest.getEventDate();
         if (newEventDate != null) {
-            if (newEventDate.minusHours(2).isBefore(LocalDateTime.now()))
-                throw new ValidationConflictException(
-                        "Event time cannot be set less than 2 hours from the current moment.");
+            if (newEventDate.minusHours(tbe).isBefore(LocalDateTime.now()))
+                throw new ValidationConflictException(String
+                        .format("Event time cannot be set less than %s hour(s) from the current moment.", tbe));
             event.setEventDate(newEventDate);
         }
         if (updateEventRequest.getPaid() != null)
@@ -192,13 +186,11 @@ public class EventService {
 
     @Transactional
     public EventFullDto add(NewEventDto newEventDto, Long userId) {
-        User initiator = userRepository.findById(userId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("User with id=%s not found.", userId)));
+        User initiator = userService.getUserById(userId);
         Event event = eventMapper.toEvent(newEventDto);
-        if (event.getEventDate().minusHours(2).isBefore(LocalDateTime.now()))
-            throw new ValidationConflictException(
-                    "Event time cannot be set less than 2 hours from the current moment.");
+        if (event.getEventDate().minusHours(tbe).isBefore(LocalDateTime.now()))
+            throw new ValidationConflictException(String
+                    .format("Event time cannot be set less than %s hour(s) from the current moment.", tbe));
         event.setCreatedOn(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
         event.setInitiator(initiator);
         event.setState(EventState.PENDING);
@@ -207,12 +199,8 @@ public class EventService {
     }
 
     public EventFullDto findByIdPrivate(Long userId, Long eventId) {
-        if (!userRepository.existsById(userId))
-            throw new ValidationNotFoundException(String
-                    .format("User with id=%s not found.", userId));
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Event with id=%s not found.", eventId)));
+        userService.getUserById(userId);
+        Event event = getEventById(eventId);
         if (!userId.equals(event.getInitiator().getId()))
             throw new ValidationForbiddenException(String
                     .format("User id=%s is not the initiator of the event id=%s", userId, eventId));
@@ -221,12 +209,8 @@ public class EventService {
 
     @Transactional
     public EventFullDto cancel(Long userId, Long eventId) {
-        if (!userRepository.existsById(userId))
-            throw new ValidationNotFoundException(String
-                    .format("User with id=%s not found.", userId));
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Event with id=%s not found.", eventId)));
+        userService.getUserById(userId);
+        Event event = getEventById(eventId);
         if (!userId.equals(event.getInitiator().getId()))
             throw new ValidationForbiddenException(String
                     .format("User id=%s is not the initiator of the event id=%s", userId, eventId));
@@ -238,45 +222,35 @@ public class EventService {
         return eventMapper.toEventFullDto(event);
     }
 
-    public List<ParticipationRequestDto> findRequestsToEvent(Long initiatorId, Long eventId) {
-        if (!userRepository.existsById(initiatorId))
-            throw new ValidationNotFoundException(String
-                    .format("User with id=%s not found.", initiatorId));
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Event with id=%s not found.", eventId)));
-        if (!initiatorId.equals(event.getInitiator().getId()))
+    public List<ParticipationRequestDto> findRequestsToEvent(Long userId, Long eventId) {
+        userService.getUserById(userId);
+        Event event = getEventById(eventId);
+        if (!userId.equals(event.getInitiator().getId()))
             throw new ValidationForbiddenException(String
-                    .format("User id=%s is not the initiator of the event id=%s", initiatorId, eventId));
+                    .format("User id=%s is not the initiator of the event id=%s", userId, eventId));
         return requestRepository.findByEvent_Id(eventId).stream()
                 .map(requestMapper::toParticipationRequestDto)
                 .collect(Collectors.toList());
     }
 
     @Transactional
-    public ParticipationRequestDto confirmRequestByInitiator(Long initiatorId, Long eventId, Long reqId) {
-        if (!userRepository.existsById(initiatorId))
-            throw new ValidationNotFoundException(String
-                    .format("User with id=%s not found.", initiatorId));
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Event with id=%s not found.", eventId)));
-        Request req = requestRepository.findById(reqId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Request with id=%s not found.", reqId)));
+    public ParticipationRequestDto confirmRequestByInitiator(Long userId, Long eventId, Long reqId) {
+        userService.getUserById(userId);
+        Event event = getEventById(eventId);
+        if (!userId.equals(event.getInitiator().getId()))
+            throw new ValidationForbiddenException(String
+                    .format("User id=%s is not the initiator of the event id=%s", userId, eventId));
+        Request req = requestService.getRequestById(reqId);
         if (req.getState() != RequestState.PENDING)
             throw new ValidationConflictException(String
                     .format("Request id=%s in status=%s. Confirm is not possible.", reqId, req.getState()));
-        long confirmedRequest = 0;
-        if (event.getParticipantLimit() > 0) {
-            confirmedRequest = requestRepository.countByEvent_IdAndState(eventId, RequestState.CONFIRMED);
-            if (confirmedRequest >= event.getParticipantLimit())
-                throw new ValidationConflictException("The maximum number of participants has been reached.");
-        }
+        long confirmedRequest = event.getConfirmedMembers().size();
+        if (event.getParticipantLimit() > 0 && confirmedRequest >= event.getParticipantLimit())
+            throw new ValidationConflictException("The maximum number of participants has been reached.");
         req.setState(RequestState.CONFIRMED);
         req = requestRepository.save(req);
         // Если достигнут лимит участников, все неподтвержденные заявки отклоняем.
-        if (++confirmedRequest == event.getParticipantLimit()) {
+        if (event.getParticipantLimit() > 0 && ++confirmedRequest == event.getParticipantLimit()) {
             List<Request> requestsToReject = requestRepository.findByEvent_IdAndState(eventId, RequestState.PENDING);
             requestsToReject.forEach(r -> r.setState(RequestState.REJECTED));
             requestRepository.saveAll(requestsToReject);
@@ -285,16 +259,10 @@ public class EventService {
     }
 
     @Transactional
-    public ParticipationRequestDto rejectRequestByInitiator(Long initiatorId, Long eventId, Long reqId) {
-        if (!userRepository.existsById(initiatorId))
-            throw new ValidationNotFoundException(String
-                    .format("User with id=%s not found.", initiatorId));
-        if (!eventRepository.existsById(eventId))
-            throw new ValidationNotFoundException(String
-                    .format("Event with id=%s not found.", eventId));
-        Request req = requestRepository.findById(reqId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Request with id=%s not found.", reqId)));
+    public ParticipationRequestDto rejectRequestByInitiator(Long userId, Long eventId, Long reqId) {
+        userService.getUserById(userId);
+        getEventById(eventId);
+        Request req = requestService.getRequestById(reqId);
         if (req.getState() == RequestState.REJECTED)
             throw new ValidationConflictException(String
                     .format("Request id=%s already in status=%s. Reject is not possible.", reqId, req.getState()));
@@ -346,15 +314,11 @@ public class EventService {
 
     @Transactional
     public EventFullDto updateByAdmin(AdminUpdateEventRequest updateEventDto, Long eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Event with id=%s not found.", eventId)));
+        Event event = getEventById(eventId);
         if (updateEventDto.getAnnotation() != null)
             event.setAnnotation(updateEventDto.getAnnotation());
         if (updateEventDto.getCategory() != null)
-            event.setCategory(categoryRepository.findById(updateEventDto.getCategory())
-                    .orElseThrow(() -> new ValidationNotFoundException(String
-                            .format("Category with id=%s not found.", updateEventDto.getCategory()))));
+            event.setCategory(categoryService.getCategoryById(updateEventDto.getCategory()));
         if (updateEventDto.getDescription() != null)
             event.setDescription(updateEventDto.getDescription());
         if (updateEventDto.getEventDate() != null)
@@ -377,12 +341,10 @@ public class EventService {
 
     @Transactional
     public EventFullDto confirmRequestByAdmin(Long eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Event with id=%s not found.", eventId)));
-        if (event.getEventDate().minusHours(1).isBefore(LocalDateTime.now()))
-            throw new ValidationConflictException(
-                    "The event cannot be published less than an hour from the current moment.");
+        Event event = getEventById(eventId);
+        if (event.getEventDate().minusHours(tbeForAdmin).isBefore(LocalDateTime.now()))
+            throw new ValidationConflictException(String
+                    .format("Event time cannot be set less than %s hour(s) from the current moment.", tbeForAdmin));
         if (event.getState() != EventState.PENDING)
             throw new ValidationConflictException(String
                     .format("Event id=%s in status=%s. Confirm is not possible.", eventId, event.getState()));
@@ -394,14 +356,18 @@ public class EventService {
 
     @Transactional
     public EventFullDto reject(Long eventId) {
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Event with id=%s not found.", eventId)));
+        Event event = getEventById(eventId);
         if (event.getState() == EventState.PUBLISHED)
             throw new ValidationConflictException(String
                     .format("Event id=%s in status=%s. Reject is not possible.", eventId, event.getState()));
         event.setState(EventState.CANCELED);
         event = eventRepository.save(event);
         return eventMapper.toEventFullDto(event);
+    }
+
+    Event getEventById(Long eventId) {
+        return eventRepository.findById(eventId)
+                .orElseThrow(() -> new ValidationNotFoundException(String
+                        .format("Event with id=%s not found.", eventId)));
     }
 }

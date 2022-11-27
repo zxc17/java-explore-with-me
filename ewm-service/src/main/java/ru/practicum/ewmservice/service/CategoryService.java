@@ -31,18 +31,13 @@ public class CategoryService {
     }
 
     public CategoryDto findById(Long catId) {
-        Category category = categoryRepository.findById(catId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Category with id=%s not found.", catId)));
+        Category category = getCategoryById(catId);
         return categoryMapper.toCategoryDto(category);
     }
 
     @Transactional
     public CategoryDto update(CategoryDto categoryDto) {
-        Category category = categoryRepository.findById(categoryDto.getId())
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Category with id=%s not found.", categoryDto.getId())));
-        // Пустым быть не может, не проверяем.
+        Category category = getCategoryById(categoryDto.getId());
         category.setName(categoryDto.getName());
         // Контроль уникальности в БД. Обработка исключения в ErrorHandler.
         category = categoryRepository.save(category);
@@ -59,9 +54,14 @@ public class CategoryService {
 
     @Transactional
     public void remove(Long catId) {
-        if (!categoryRepository.existsById(catId))
-            throw new ValidationNotFoundException(String
-                    .format("Category with id=%s not found.", catId));
+        getCategoryById(catId);
         categoryRepository.deleteById(catId);
     }
+
+    Category getCategoryById(Long catId) {
+        return categoryRepository.findById(catId)
+                .orElseThrow(() -> new ValidationNotFoundException(String
+                        .format("Category with id=%s not found.", catId)));
+    }
+
 }

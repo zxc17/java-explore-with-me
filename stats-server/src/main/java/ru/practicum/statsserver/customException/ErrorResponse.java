@@ -1,15 +1,18 @@
 package ru.practicum.statsserver.customException;
 
+import lombok.Getter;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import static ru.practicum.statsserver.util.Constants.DATE_PATTERN;
 
+@Getter
 public class ErrorResponse {
-    String status;  // Статус.
-    String message; // Описание ошибки.
-    String reason;  // Причина.
-    String timestamp;
+    private final String status;  // Статус.
+    private final String message; // Описание ошибки.
+    private final String reason;  // Причина.
+    private final String timestamp;
 
     public ErrorResponse(String status, String message, String reason) {
         this.status = status;
@@ -17,21 +20,4 @@ public class ErrorResponse {
         this.reason = reason;
         this.timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern(DATE_PATTERN));
     }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public String getReason() {
-        return reason;
-    }
-
-    public String getTimestamp() {
-        return timestamp;
-    }
 }
-

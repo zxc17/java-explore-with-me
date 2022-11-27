@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -38,6 +39,16 @@ public class ErrorHandler {
         String message = e.getBindingResult().getFieldErrors().stream()
                 .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
                 .collect(Collectors.toList()).toString();
+        log.warn("400 {}", message, e);
+        return new ErrorResponse(status, message, reason);
+    }
+
+    @ExceptionHandler({MissingServletRequestParameterException.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleMissingRequestParameter(final MissingServletRequestParameterException e) {
+        String status = HttpStatus.BAD_REQUEST.toString();
+        String reason = "For the requested operation the conditions are not met.";
+        String message = e.getMessage();
         log.warn("400 {}", message, e);
         return new ErrorResponse(status, message, reason);
     }

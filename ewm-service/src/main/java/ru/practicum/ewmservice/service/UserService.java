@@ -49,4 +49,10 @@ public class UserService {
             throw new ValidationNotFoundException(String.format("User with id=%s not found.", userId));
         userRepository.deleteById(userId);
     }
+
+    User getUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ValidationNotFoundException(String
+                        .format("User with id=%s not found.", userId)));
+    }
 }

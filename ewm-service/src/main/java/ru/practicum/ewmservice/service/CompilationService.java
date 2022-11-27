@@ -14,7 +14,6 @@ import ru.practicum.ewmservice.model.QCompilation;
 import ru.practicum.ewmservice.model.dto.CompilationDto;
 import ru.practicum.ewmservice.model.dto.NewCompilationDto;
 import ru.practicum.ewmservice.storage.CompilationRepository;
-import ru.practicum.ewmservice.storage.EventRepository;
 import ru.practicum.ewmservice.util.CustomPageRequest;
 
 import java.util.List;
@@ -26,13 +25,11 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class CompilationService {
     private final CompilationRepository compilationRepository;
-    private final EventRepository eventRepository;
+    private final EventService eventService;
     private final CompilationMapper compilationMapper;
 
     public CompilationDto findById(Long compId) {
-        Compilation comp = compilationRepository.findById(compId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Compilation with id=%s not found.", compId)));
+        Compilation comp = getCompilationById(compId);
         return compilationMapper.toCompilationDto(comp);
     }
 
@@ -57,50 +54,43 @@ public class CompilationService {
 
     @Transactional
     public void remove(Long compId) {
-        if (!compilationRepository.existsById(compId))
-            throw new ValidationNotFoundException(String.format("Compilation with id=%s not found.", compId));
+        getCompilationById(compId);
         compilationRepository.deleteById(compId);
     }
 
     @Transactional
     public void removeEvent(Long compId, Long eventId) {
-        Compilation comp = compilationRepository.findById(compId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Compilation with id=%s not found.", compId)));
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Event with id=%s not found.", eventId)));
+        Compilation comp = getCompilationById(compId);
+        Event event = eventService.getEventById(eventId);
         comp.getEvents().remove(event);
         compilationRepository.save(comp);
     }
 
     @Transactional
     public void addEvent(Long compId, Long eventId) {
-        Compilation comp = compilationRepository.findById(compId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Compilation with id=%s not found.", compId)));
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Event with id=%s not found.", eventId)));
+        Compilation comp = getCompilationById(compId);
+        Event event = eventService.getEventById(eventId);
         comp.getEvents().add(event);
         compilationRepository.save(comp);
     }
 
     @Transactional
     public void pin(Long compId) {
-        Compilation comp = compilationRepository.findById(compId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Compilation with id=%s not found.", compId)));
+        Compilation comp = getCompilationById(compId);
         comp.setPinned(true);
         compilationRepository.save(comp);
     }
 
     @Transactional
     public void unpin(Long compId) {
-        Compilation comp = compilationRepository.findById(compId)
-                .orElseThrow(() -> new ValidationNotFoundException(String
-                        .format("Compilation with id=%s not found.", compId)));
+        Compilation comp = getCompilationById(compId);
         comp.setPinned(false);
         compilationRepository.save(comp);
+    }
+
+    Compilation getCompilationById(Long compId) {
+        return compilationRepository.findById(compId)
+                .orElseThrow(() -> new ValidationNotFoundException(String
+                        .format("Compilation with id=%s not found.", compId)));
     }
 }

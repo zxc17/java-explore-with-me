@@ -36,7 +36,7 @@ public class RequestController {
     @PostMapping("/users/{userId}/requests")
     public ParticipationRequestDto add(
             @PathVariable Long userId,
-            @RequestParam(required = false) Long eventId
+            @RequestParam Long eventId
     ) {
         log.info("Endpoint 'Add a request to participate in an event from the current user' " +
                 "userID={}, eventID={}.", userId, eventId);
