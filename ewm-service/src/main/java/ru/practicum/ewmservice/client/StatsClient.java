@@ -48,9 +48,17 @@ public class StatsClient {
         return getStats(eventIds, true);
     }
 
+    /**
+     * Запрос количества просмотров событий к серверу статистики.
+     *
+     * @param eventIds Спикок ID событий.
+     * @param unique   Флаг уникальных IP.
+     * @return Мапа (id события, количество просмотров).
+     */
     public Map<Long, Long> getStats(List<Long> eventIds, boolean unique) {
+        if (eventIds != null && eventIds.size() == 0)   // Если запросный список пустой, то не нужно дергать базу.
+            return new HashMap<>();                     // Это возможно при обработке подборок событий.
         StringBuilder sbUrl = new StringBuilder();
-
         sbUrl.append("/stats")
                 // Значения начала и конца временного диапазона - обязательны по ТЗ.
                 // Но в ТЗ не указано откуда берется их значения. Поэтому берем с запасом.
@@ -61,7 +69,7 @@ public class StatsClient {
                 .append("&end=")
                 .append(URLEncoder.encode("2100-01-01 00:00:00", StandardCharsets.UTF_8))
                 .append("&unique=").append(unique);
-        if (eventIds != null && eventIds.size() > 0) {
+        if (eventIds != null) {
             sbUrl.append("&uris=");
             Iterator<Long> id = eventIds.iterator();
             sbUrl.append("/events/")
@@ -85,7 +93,7 @@ public class StatsClient {
         } else {
             return resp.stream()
                     .collect(Collectors.toMap(
-                            vs -> Long.parseLong(vs.getUri().split("/")[1]),
+                            vs -> Long.parseLong(vs.getUri().split("/", 0)[2]),
                             vs -> vs.getHits()));
         }
     }

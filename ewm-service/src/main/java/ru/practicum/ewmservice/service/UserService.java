@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class UserService {
-    private final UserMapper userMapper;
     private final UserRepository userRepository;
 
     public List<UserDto> find(List<Long> ids, Integer from, Integer size) {
@@ -31,16 +30,15 @@ public class UserService {
         if (ids != null && ids.size() > 0)
             findCriteria.and(qUser.id.in(ids));
         return userRepository.findAll(findCriteria, pageable).stream()
-                .map(userMapper::toUserDto)
+                .map(UserMapper::toUserDto)
                 .collect(Collectors.toList());
-
     }
 
     @Transactional
     public UserDto add(NewUserRequest newUserRequest) {
-        User user = userMapper.toUser(newUserRequest);
+        User user = UserMapper.toUser(newUserRequest);
         user = userRepository.save(user);
-        return userMapper.toUserDto(user);
+        return UserMapper.toUserDto(user);
     }
 
     @Transactional

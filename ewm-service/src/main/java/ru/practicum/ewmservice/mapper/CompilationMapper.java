@@ -1,40 +1,29 @@
 package ru.practicum.ewmservice.mapper;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 import ru.practicum.ewmservice.model.Compilation;
+import ru.practicum.ewmservice.model.Event;
 import ru.practicum.ewmservice.model.dto.CompilationDto;
 import ru.practicum.ewmservice.model.dto.NewCompilationDto;
-import ru.practicum.ewmservice.storage.EventRepository;
 
-import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Map;
 
-@Component
-@RequiredArgsConstructor
 public class CompilationMapper {
-    private final EventMapper eventMapper;
-    private final EventRepository eventRepository;
 
-    public Compilation toCompilation(NewCompilationDto newCompilationDto) {
+    public static Compilation toCompilation(NewCompilationDto newCompilationDto, List<Event> events) {
         return Compilation.builder()
                 .title(newCompilationDto.getTitle())
                 .pinned(newCompilationDto.getPinned())
-                .events(newCompilationDto.getEvents().stream()
-                        .map(eventRepository::findById)
-                        .map(Optional::get)
-                        .collect(Collectors.toList()))
+                .events(events)
                 .build();
     }
 
-    public CompilationDto toCompilationDto(Compilation compilation) {
+    public static CompilationDto toCompilationDto(Compilation compilation, Map<Long, Long> views) {
         return CompilationDto.builder()
                 .id(compilation.getId())
                 .title(compilation.getTitle())
                 .pinned(compilation.getPinned())
-                .events(compilation.getEvents().stream()
-                        .map(eventMapper::toEventShortDto)
-                        .collect(Collectors.toList()))
+                .events(EventMapper.toEventShortDto(compilation.getEvents(), views))
                 .build();
     }
 }

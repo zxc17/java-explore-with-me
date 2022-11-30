@@ -23,10 +23,9 @@ import static ru.practicum.statsserver.util.Constants.DATE_PATTERN;
 @RequiredArgsConstructor
 public class StatsService {
     private final StatsRepository statsRepository;
-    private final StatsMapper statsMapper;
 
     public void hit(EndpointHit hit) {
-        statsRepository.save(statsMapper.toStatRecord(hit));
+        statsRepository.save(StatsMapper.toStatRecord(hit));
     }
 
     public List<ViewStats> findAll(String start, String end, String app, List<String> uris, Boolean unique) {
@@ -45,8 +44,7 @@ public class StatsService {
         }
         QStatsRecord qStats = QStatsRecord.statsRecord;
         BooleanBuilder findCriteria = new BooleanBuilder();
-        findCriteria.and(qStats.timestamp.between(startRange, endRange))
-                .and(qStats.timestamp.before(endRange));
+        findCriteria.and(qStats.timestamp.between(startRange, endRange));
         if (app != null)
             findCriteria.and(qStats.app.eq(app));
         if (uris != null && uris.size() > 0)

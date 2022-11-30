@@ -1,35 +1,24 @@
 package ru.practicum.ewmservice.mapper;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import ru.practicum.ewmservice.client.StatsClient;
-import ru.practicum.ewmservice.customException.ValidationNotFoundException;
+import ru.practicum.ewmservice.model.Category;
 import ru.practicum.ewmservice.model.Event;
 import ru.practicum.ewmservice.model.dto.EventFullDto;
 import ru.practicum.ewmservice.model.dto.EventShortDto;
 import ru.practicum.ewmservice.model.dto.Location;
 import ru.practicum.ewmservice.model.dto.NewEventDto;
-import ru.practicum.ewmservice.storage.CategoryRepository;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
-@Component
-@RequiredArgsConstructor
 public class EventMapper {
-    private final CategoryRepository categoryRepository;
-    private final CategoryMapper categoryMapper;
-    private final UserMapper userMapper;
-    private final StatsClient statsClient;
 
-    public Event toEvent(NewEventDto newEventDto) {
+    public static Event toEvent(NewEventDto newEventDto, Category category) {
         return Event.builder()
                 .annotation(newEventDto.getAnnotation())
-                .category(categoryRepository.findById(newEventDto.getCategory())
-                        .orElseThrow(() -> new ValidationNotFoundException(String
-                                .format("Category with id=%s not found.", newEventDto.getCategory()))))
+                .category(category)
                 .description(newEventDto.getDescription())
                 .eventDate(newEventDto.getEventDate())
                 .locationLat(newEventDto.getLocation().getLat())
@@ -41,18 +30,23 @@ public class EventMapper {
                 .build();
     }
 
-    public EventFullDto toEventFullDto(Event event) {
-        Map<Long, Long> views = statsClient.getStats(Collections.singletonList(event.getId()));
+    public static List<EventFullDto> toEventFullDto(Iterable<Event> events, Map<Long, Long> views) {
+        List<EventFullDto> result = new ArrayList<>();
+        events.forEach(e -> result.add(toEventFullDto(e, views)));
+        return result;
+    }
+
+    public static EventFullDto toEventFullDto(Event event, Map<Long, Long> views) {
         long confirmedMembers = Optional.ofNullable(event.getConfirmedMembers()).orElse(new ArrayList<>()).size();
         return EventFullDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
-                .category(categoryMapper.toCategoryDto(event.getCategory()))
+                .category(CategoryMapper.toCategoryDto(event.getCategory()))
                 .confirmedRequests(confirmedMembers)
                 .createdOn(event.getCreatedOn())
                 .description(event.getDescription())
                 .eventDate(event.getEventDate())
-                .initiator(userMapper.toUserShortDto(event.getInitiator()))
+                .initiator(UserMapper.toUserShortDto(event.getInitiator()))
                 .location(new Location(event.getLocationLat(), event.getLocationLon()))
                 .paid(event.getPaid())
                 .participantLimit(event.getParticipantLimit())
@@ -64,16 +58,21 @@ public class EventMapper {
                 .build();
     }
 
-    public EventShortDto toEventShortDto(Event event) {
-        Map<Long, Long> views = statsClient.getStats(Collections.singletonList(event.getId()));
+    public static List<EventShortDto> toEventShortDto(List<Event> events, Map<Long, Long> views) {
+        return events.stream()
+                .map(e -> toEventShortDto(e, views))
+                .collect(Collectors.toList());
+    }
+
+    public static EventShortDto toEventShortDto(Event event, Map<Long, Long> views) {
         long confirmedMembers = Optional.ofNullable(event.getConfirmedMembers()).orElse(new ArrayList<>()).size();
         return EventShortDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
-                .category(categoryMapper.toCategoryDto(event.getCategory()))
+                .category(CategoryMapper.toCategoryDto(event.getCategory()))
                 .confirmedRequests(confirmedMembers)
                 .eventDate(event.getEventDate())
-                .initiator(userMapper.toUserShortDto(event.getInitiator()))
+                .initiator(UserMapper.toUserShortDto(event.getInitiator()))
                 .paid(event.getPaid())
                 .title(event.getTitle())
                 .views(Optional.ofNullable(views.get(event.getId())).orElse(0L))

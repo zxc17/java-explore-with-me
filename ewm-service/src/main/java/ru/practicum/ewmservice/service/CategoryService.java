@@ -15,24 +15,24 @@ import ru.practicum.ewmservice.util.CustomPageRequest;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static ru.practicum.ewmservice.mapper.CategoryMapper.toCategoryDto;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CategoryService {
     private final CategoryRepository categoryRepository;
-    private final CategoryMapper categoryMapper;
-
 
     public List<CategoryDto> findAll(Integer from, Integer size) {
         Pageable pageable = CustomPageRequest.of(from, size);
         return categoryRepository.findAll(pageable).stream()
-                .map(categoryMapper::toCategoryDto)
+                .map(CategoryMapper::toCategoryDto)
                 .collect(Collectors.toList());
     }
 
     public CategoryDto findById(Long catId) {
         Category category = getCategoryById(catId);
-        return categoryMapper.toCategoryDto(category);
+        return toCategoryDto(category);
     }
 
     @Transactional
@@ -41,15 +41,15 @@ public class CategoryService {
         category.setName(categoryDto.getName());
         // Контроль уникальности в БД. Обработка исключения в ErrorHandler.
         category = categoryRepository.save(category);
-        return categoryMapper.toCategoryDto(category);
+        return toCategoryDto(category);
     }
 
     @Transactional
     public CategoryDto add(NewCategoryDto newCategoryDto) {
-        Category category = categoryMapper.toCategory(newCategoryDto);
+        Category category = CategoryMapper.toCategory(newCategoryDto);
         // Контроль уникальности в БД. Обработка исключения в ErrorHandler.
         category = categoryRepository.save(category);
-        return categoryMapper.toCategoryDto(category);
+        return toCategoryDto(category);
     }
 
     @Transactional

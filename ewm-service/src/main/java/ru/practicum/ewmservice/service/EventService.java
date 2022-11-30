@@ -15,6 +15,7 @@ import ru.practicum.ewmservice.customException.ValidationForbiddenException;
 import ru.practicum.ewmservice.customException.ValidationNotFoundException;
 import ru.practicum.ewmservice.mapper.EventMapper;
 import ru.practicum.ewmservice.mapper.RequestMapper;
+import ru.practicum.ewmservice.model.Category;
 import ru.practicum.ewmservice.model.Event;
 import ru.practicum.ewmservice.model.EventSort;
 import ru.practicum.ewmservice.model.EventState;
@@ -36,12 +37,15 @@ import ru.practicum.ewmservice.util.CustomPageRequest;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
+import static ru.practicum.ewmservice.mapper.EventMapper.toEventFullDto;
 import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
 
 @Service
@@ -49,15 +53,17 @@ import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
 @Transactional(readOnly = true)
 public class EventService {
     private final EventRepository eventRepository;
-    private final EventMapper eventMapper;
     private final UserService userService;
     private final CategoryService categoryService;
     private final RequestService requestService;
     private final RequestRepository requestRepository;
-    private final RequestMapper requestMapper;
     private final StatsClient statsClient;
-    @Value("${time-before-event}") int tbe;
-    @Value("${time-before-event.admin}") int tbeForAdmin;
+    @Value("${time-before-event}")
+    int tbe;
+    @Value("${time-before-event.admin}")
+    int tbeForAdmin;
+    @Value("${app-name}")
+    String appName;
 
     public List<EventFullDto> findAll(String text,
                                       List<Long> categories,
@@ -67,7 +73,9 @@ public class EventService {
                                       Boolean onlyAvailable,
                                       String sortStr,
                                       Integer from,
-                                      Integer size) {
+                                      Integer size,
+                                      String uri,
+                                      String ip) {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern(DATE_PATTERN);
         QEvent qEvent = QEvent.event;
         BooleanBuilder findCriteria = new BooleanBuilder();
@@ -102,28 +110,31 @@ public class EventService {
         }
         if (Boolean.TRUE.equals(onlyAvailable))
             findCriteria.and(qEvent.participantLimit.gt(qEvent.confirmedMembers.size()));
+        statsClient.sendHit(new EndpointHit(appName, uri, ip));
         List<EventFullDto> result;
+        Map<Long, Long> views;
+        Page<Event> events;
+        Pageable pageable;
         switch (Optional.ofNullable(EventSort.convert(sortStr)).orElse(EventSort.UNSORTED)) {
             case EVENT_DATE:
                 Sort sort = Sort.by("eventDate");
-                Pageable pageableDate = CustomPageRequest.of(from, size, sort);
-                result = eventRepository.findAll(findCriteria, pageableDate).stream()
-                        .map(eventMapper::toEventFullDto)
-                        .collect(Collectors.toList());
+                pageable = CustomPageRequest.of(from, size, sort);
+                events = eventRepository.findAll(findCriteria, pageable);
+                views = statsClient.getStats(getIds(events));
+                result = toEventFullDto(events, views);
                 break;
             case VIEWS:
-                result = StreamSupport.stream(eventRepository.findAll(findCriteria).spliterator(), false)
-                        .map(eventMapper::toEventFullDto)
+                Iterable<Event> eventIterable = eventRepository.findAll(findCriteria);
+                views = statsClient.getStats(getIds(eventIterable));
+                result = toEventFullDto(eventIterable, views).stream()
                         .sorted(Comparator.comparing(EventFullDto::getViews))
-                        .skip(from)
-                        .limit(size)
                         .collect(Collectors.toList());
                 break;
             default: //Несортированный
-                Pageable pageableUnsorted = CustomPageRequest.of(from, size);
-                result = eventRepository.findAll(findCriteria, pageableUnsorted).stream()
-                        .map(eventMapper::toEventFullDto)
-                        .collect(Collectors.toList());
+                pageable = CustomPageRequest.of(from, size);
+                events = eventRepository.findAll(findCriteria, pageable);
+                views = statsClient.getStats(getIds(events));
+                result = toEventFullDto(events, views);
         }
         return result;
     }
@@ -133,27 +144,24 @@ public class EventService {
         if (event.getState() != EventState.PUBLISHED)
             throw new ValidationConflictException(String
                     .format("Event id=%s not published", eventId));
-        EventFullDto result = eventMapper.toEventFullDto(event);
-        EndpointHit hit = new EndpointHit("ewm", uri, ip);
-        statsClient.sendHit(hit);
-        return result;
+        Map<Long, Long> views = statsClient.getStats(Collections.singletonList(eventId));
+        statsClient.sendHit(new EndpointHit(appName, uri, ip));
+        return toEventFullDto(event, views);
     }
 
     public List<EventShortDto> findAllPrivate(Long userId, Integer from, Integer size) {
         userService.getUserById(userId);
         Pageable pageable = CustomPageRequest.of(from, size);
-        return eventRepository.findByInitiator_Id(userId, pageable).stream()
-                .map(eventMapper::toEventShortDto)
-                .collect(Collectors.toList());
+        List<Event> events = eventRepository.findByInitiator_Id(userId, pageable);
+        Map<Long, Long> views = statsClient.getStats(getIds(events));
+        return EventMapper.toEventShortDto(events, views);
     }
 
     @Transactional
     public EventFullDto update(UpdateEventRequest updateEventRequest, Long userId) {
         userService.getUserById(userId);
         Event event = getEventById(updateEventRequest.getEventId());
-        if (!userId.equals(event.getInitiator().getId()))
-            throw new ValidationForbiddenException(String
-                    .format("User id=%s is not the initiator of event id=%s", userId, event.getId()));
+        checkInitiator(event, userId);
         if (event.getState() == EventState.PUBLISHED)
             throw new ValidationConflictException(String
                     .format("Can't edit events in status=%s", event.getState()));
@@ -181,13 +189,15 @@ public class EventService {
             event.setState(EventState.PENDING);
 
         event = eventRepository.save(event);
-        return eventMapper.toEventFullDto(event);
+        Map<Long, Long> views = statsClient.getStats(Collections.singletonList(event.getId()));
+        return toEventFullDto(event, views);
     }
 
     @Transactional
     public EventFullDto add(NewEventDto newEventDto, Long userId) {
         User initiator = userService.getUserById(userId);
-        Event event = eventMapper.toEvent(newEventDto);
+        Category category = categoryService.getCategoryById(newEventDto.getCategory());
+        Event event = EventMapper.toEvent(newEventDto, category);
         if (event.getEventDate().minusHours(tbe).isBefore(LocalDateTime.now()))
             throw new ValidationConflictException(String
                     .format("Event time cannot be set less than %s hour(s) from the current moment.", tbe));
@@ -195,41 +205,38 @@ public class EventService {
         event.setInitiator(initiator);
         event.setState(EventState.PENDING);
         event = eventRepository.save(event);
-        return eventMapper.toEventFullDto(event);
+        Map<Long, Long> views = statsClient.getStats(Collections.singletonList(event.getId()));
+        return toEventFullDto(event, views);
     }
 
     public EventFullDto findByIdPrivate(Long userId, Long eventId) {
         userService.getUserById(userId);
         Event event = getEventById(eventId);
-        if (!userId.equals(event.getInitiator().getId()))
-            throw new ValidationForbiddenException(String
-                    .format("User id=%s is not the initiator of the event id=%s", userId, eventId));
-        return eventMapper.toEventFullDto(event);
+        checkInitiator(event, userId);
+        Map<Long, Long> views = statsClient.getStats(Collections.singletonList(eventId));
+        return toEventFullDto(event, views);
     }
 
     @Transactional
     public EventFullDto cancel(Long userId, Long eventId) {
         userService.getUserById(userId);
         Event event = getEventById(eventId);
-        if (!userId.equals(event.getInitiator().getId()))
-            throw new ValidationForbiddenException(String
-                    .format("User id=%s is not the initiator of the event id=%s", userId, eventId));
+        checkInitiator(event, userId);
         if (event.getState() != EventState.PENDING)
             throw new ValidationConflictException(String
                     .format("Event id=%s in status=%s. Cancel is not possible.", eventId, event.getState()));
         event.setState(EventState.CANCELED);
         event = eventRepository.save(event);
-        return eventMapper.toEventFullDto(event);
+        Map<Long, Long> views = statsClient.getStats(Collections.singletonList(eventId));
+        return toEventFullDto(event, views);
     }
 
     public List<ParticipationRequestDto> findRequestsToEvent(Long userId, Long eventId) {
         userService.getUserById(userId);
         Event event = getEventById(eventId);
-        if (!userId.equals(event.getInitiator().getId()))
-            throw new ValidationForbiddenException(String
-                    .format("User id=%s is not the initiator of the event id=%s", userId, eventId));
+        checkInitiator(event, userId);
         return requestRepository.findByEvent_Id(eventId).stream()
-                .map(requestMapper::toParticipationRequestDto)
+                .map(RequestMapper::toParticipationRequestDto)
                 .collect(Collectors.toList());
     }
 
@@ -237,9 +244,7 @@ public class EventService {
     public ParticipationRequestDto confirmRequestByInitiator(Long userId, Long eventId, Long reqId) {
         userService.getUserById(userId);
         Event event = getEventById(eventId);
-        if (!userId.equals(event.getInitiator().getId()))
-            throw new ValidationForbiddenException(String
-                    .format("User id=%s is not the initiator of the event id=%s", userId, eventId));
+        checkInitiator(event, userId);
         Request req = requestService.getRequestById(reqId);
         if (req.getState() != RequestState.PENDING)
             throw new ValidationConflictException(String
@@ -255,7 +260,7 @@ public class EventService {
             requestsToReject.forEach(r -> r.setState(RequestState.REJECTED));
             requestRepository.saveAll(requestsToReject);
         }
-        return requestMapper.toParticipationRequestDto(req);
+        return RequestMapper.toParticipationRequestDto(req);
     }
 
     @Transactional
@@ -268,7 +273,7 @@ public class EventService {
                     .format("Request id=%s already in status=%s. Reject is not possible.", reqId, req.getState()));
         req.setState(RequestState.REJECTED);
         req = requestRepository.save(req);
-        return requestMapper.toParticipationRequestDto(req);
+        return RequestMapper.toParticipationRequestDto(req);
     }
 
     public List<EventFullDto> findByAdmin(List<Long> users, List<String> states, List<Long> categories,
@@ -307,9 +312,8 @@ public class EventService {
             findCriteria.and(qEvent.eventDate.before(end));
         }
         Page<Event> events = eventRepository.findAll(findCriteria, pageable);
-        return events.stream()
-                .map(eventMapper::toEventFullDto)
-                .collect(Collectors.toList());
+        Map<Long, Long> views = statsClient.getStats(getIds(events));
+        return toEventFullDto(events, views);
     }
 
     @Transactional
@@ -336,7 +340,8 @@ public class EventService {
         if (updateEventDto.getTitle() != null)
             event.setTitle(updateEventDto.getTitle());
         event = eventRepository.save(event);
-        return eventMapper.toEventFullDto(event);
+        Map<Long, Long> views = statsClient.getStats(Collections.singletonList(eventId));
+        return toEventFullDto(event, views);
     }
 
     @Transactional
@@ -351,7 +356,8 @@ public class EventService {
         event.setState(EventState.PUBLISHED);
         event.setPublishedOn(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
         event = eventRepository.save(event);
-        return eventMapper.toEventFullDto(event);
+        Map<Long, Long> views = statsClient.getStats(Collections.singletonList(eventId));
+        return toEventFullDto(event, views);
     }
 
     @Transactional
@@ -362,12 +368,25 @@ public class EventService {
                     .format("Event id=%s in status=%s. Reject is not possible.", eventId, event.getState()));
         event.setState(EventState.CANCELED);
         event = eventRepository.save(event);
-        return eventMapper.toEventFullDto(event);
+        Map<Long, Long> views = statsClient.getStats(Collections.singletonList(eventId));
+        return toEventFullDto(event, views);
     }
 
     Event getEventById(Long eventId) {
         return eventRepository.findById(eventId)
                 .orElseThrow(() -> new ValidationNotFoundException(String
                         .format("Event with id=%s not found.", eventId)));
+    }
+
+    private void checkInitiator(Event event, long userId) {
+        if (userId != event.getInitiator().getId())
+            throw new ValidationForbiddenException(String
+                    .format("User id=%s is not the initiator of event id=%s", userId, event.getId()));
+    }
+
+    List<Long> getIds(Iterable<Event> events) {
+        List<Long> result = new ArrayList<>();
+        events.forEach(e -> result.add(e.getId()));
+        return result;
     }
 }

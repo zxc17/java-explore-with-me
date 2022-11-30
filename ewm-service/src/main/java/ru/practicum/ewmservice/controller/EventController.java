@@ -57,10 +57,17 @@ public class EventController {
             @RequestParam(required = false) Boolean onlyAvailable,
             @RequestParam(required = false) String sort,
             @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
-            @Positive @RequestParam(required = false, defaultValue = "10") Integer size
+            @Positive @RequestParam(required = false, defaultValue = "10") Integer size,
+            HttpServletRequest request
     ) {
         log.info("Endpoint 'Find events', public part. ");
-        return eventService.findAll(text, categories, paid, rangeStart, rangeEnd, onlyAvailable, sort, from, size);
+        String uri = request.getRequestURI();
+        String ip = request.getRemoteAddr();
+        log.info("endpoint path: {}", uri);
+        log.info("client ip: {}", ip);
+        return eventService.findAll(text, categories, paid, rangeStart, rangeEnd, onlyAvailable, sort,
+                from, size,
+                uri, ip);
     }
 
 
