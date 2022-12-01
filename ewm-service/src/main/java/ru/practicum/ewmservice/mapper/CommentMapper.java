@@ -12,7 +12,7 @@ public class CommentMapper {
 
     public static Comment toComment(NewCommentDto commentDto, User commentator) {
         return Comment.builder()
-                .event_id(commentDto.getEvent())
+                .eventId(commentDto.getEvent())
                 .commentator(commentator)
                 .text(commentDto.getText())
                 .created(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS))
@@ -22,7 +22,7 @@ public class CommentMapper {
     public static CommentDto toCommentDto(Comment comment) {
         return CommentDto.builder()
                 .id(comment.getId())
-                .eventId(comment.getEvent_id())
+                .eventId(comment.getEventId())
                 .commentator(UserMapper.toUserDto(comment.getCommentator()))
                 .text(comment.getText())
                 .created(comment.getCreated())

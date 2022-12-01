@@ -90,7 +90,7 @@ public class CommentController {
     /* ****************** */
 
     @DeleteMapping("/admin/comments/{commentId}")
-    public void removeByAdmin(@PathVariable Long commentId ) {
+    public void removeByAdmin(@PathVariable Long commentId) {
         log.info("Endpoint 'Remove comment by admin' " +
                 "commentID={}", commentId);
         commentService.removeByAdmin(commentId);

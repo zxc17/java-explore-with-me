@@ -34,7 +34,7 @@ public class Comment {
     private Long id;
 
     @Column(name = "event_id")
-    Long event_id;
+    Long eventId;
 
     @ManyToOne
     @JoinColumn(name = "commentator_id", nullable = false)
