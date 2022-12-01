@@ -42,8 +42,8 @@ public class CompilationController {
     @GetMapping("/compilations")
     public List<CompilationDto> findAll(
             @RequestParam(required = false) Optional<Boolean> pinned,
-            @Validated @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
-            @Validated @Positive @RequestParam(required = false, defaultValue = "10") Integer size
+            @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
+            @Positive @RequestParam(required = false, defaultValue = "10") Integer size
     ) {
         log.info("Endpoint 'Find compilations' " +
                 "pinned={}, from={}, size={}.", pinned, from, size);

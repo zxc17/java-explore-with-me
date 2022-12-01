@@ -33,8 +33,8 @@ public class CategoryController {
 
     @GetMapping("/categories")
     public List<CategoryDto> findAll(
-            @Validated @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
-            @Validated @Positive @RequestParam(required = false, defaultValue = "10") Integer size
+            @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
+            @Positive @RequestParam(required = false, defaultValue = "10") Integer size
     ) {
         log.info("Endpoint 'Find categories' " +
                 "from={}, size={}.", from, size);

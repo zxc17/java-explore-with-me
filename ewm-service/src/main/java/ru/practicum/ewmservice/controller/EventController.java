@@ -56,8 +56,8 @@ public class EventController {
             @RequestParam(required = false) String rangeEnd,
             @RequestParam(required = false) Boolean onlyAvailable,
             @RequestParam(required = false) String sort,
-            @Validated @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
-            @Validated @Positive @RequestParam(required = false, defaultValue = "10") Integer size,
+            @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
+            @Positive @RequestParam(required = false, defaultValue = "10") Integer size,
             HttpServletRequest request
     ) {
         log.info("Endpoint 'Find events', public part. ");
@@ -78,8 +78,8 @@ public class EventController {
     @GetMapping("/users/{userId}/events")
     public List<EventShortDto> findAllPrivate(
             @PathVariable Long userId,
-            @Validated @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
-            @Validated @Positive @RequestParam(required = false, defaultValue = "10") Integer size
+            @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
+            @Positive @RequestParam(required = false, defaultValue = "10") Integer size
     ) {
         log.info("Endpoint 'Find events made by current user' " +
                 "userID={}.", userId);
@@ -176,8 +176,8 @@ public class EventController {
             @RequestParam(required = false) List<Long> categories,
             @RequestParam(required = false) String rangeStart,
             @RequestParam(required = false) String rangeEnd,
-            @Validated @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
-            @Validated @Positive @RequestParam(required = false, defaultValue = "10") Integer size
+            @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
+            @Positive @RequestParam(required = false, defaultValue = "10") Integer size
     ) {
         log.info("Endpoint 'Find events by admin' " +
                         "users={}, states={}, categories={}, rangeStart={}, rangeEnd={}, from={}, size={}.",
