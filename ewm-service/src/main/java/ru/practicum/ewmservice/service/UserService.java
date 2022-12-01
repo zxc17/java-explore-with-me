@@ -43,8 +43,7 @@ public class UserService {
 
     @Transactional
     public void remove(Long userId) {
-        if (!userRepository.existsById(userId))
-            throw new ValidationNotFoundException(String.format("User with id=%s not found.", userId));
+        getUserById(userId);
         userRepository.deleteById(userId);
     }
 

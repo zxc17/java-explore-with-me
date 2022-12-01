@@ -33,8 +33,8 @@ public class UserController {
     @GetMapping("/admin/users")
     public List<UserDto> find(
             @RequestParam(required = false) List<Long> ids,
-            @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
-            @Positive @RequestParam(required = false, defaultValue = "10") Integer size
+            @Validated @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
+            @Validated @Positive @RequestParam(required = false, defaultValue = "10") Integer size
     ) {
         log.info("Endpoint 'Find users' " +
                 "RequestBody={}, from={}, size={}.", ids, from, size);
