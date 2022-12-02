@@ -9,12 +9,15 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.practicum.ewmservice.model.dto.CommentDto;
 import ru.practicum.ewmservice.model.dto.NewCommentDto;
 import ru.practicum.ewmservice.model.dto.UpdateCommentDto;
 import ru.practicum.ewmservice.service.CommentService;
 
+import javax.validation.constraints.Positive;
+import javax.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 @RestController
@@ -36,10 +39,15 @@ public class CommentController {
     }
 
     @GetMapping("/comments/event/{eventId}")
-    public List<CommentDto> findByEventId(@PathVariable Long eventId) {
+    public List<CommentDto> findByEventId(
+            @PathVariable Long eventId,
+            @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
+            @Positive @RequestParam(required = false, defaultValue = "10") Integer size,
+            @RequestParam(required = false, defaultValue = "desc") String sort
+    ) {
         log.info("Endpoint 'Find comments for event' " +
-                "eventID={}.", eventId);
-        return commentService.findByEventId(eventId);
+                "eventID={}, from={}, size={}, sort={}.", eventId, from, size, sort);
+        return commentService.findByEventId(eventId, from, size, sort);
     }
 
 
@@ -68,10 +76,15 @@ public class CommentController {
     }
 
     @GetMapping("/users/{userId}/comments")
-    public List<CommentDto> findByCommentator(@PathVariable Long userId) {
+    public List<CommentDto> findByCommentator(
+            @PathVariable Long userId,
+            @PositiveOrZero @RequestParam(required = false, defaultValue = "0") Integer from,
+            @Positive @RequestParam(required = false, defaultValue = "10") Integer size,
+            @RequestParam(required = false, defaultValue = "desc") String sort
+    ) {
         log.info("Endpoint 'Find comments by commentator' " +
-                "userID={}.", userId);
-        return commentService.findByCommentator(userId);
+                "userID={}, from={}, size={}, sort={}.", userId, from, size, sort);
+        return commentService.findByCommentator(userId, from, size, sort);
     }
 
     @DeleteMapping("/users/{userId}/comments/{commentId}")

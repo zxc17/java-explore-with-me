@@ -1,17 +1,22 @@
 package ru.practicum.ewmservice.service;
 
+import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewmservice.customException.ValidationForbiddenException;
 import ru.practicum.ewmservice.customException.ValidationNotFoundException;
 import ru.practicum.ewmservice.mapper.CommentMapper;
 import ru.practicum.ewmservice.model.Comment;
+import ru.practicum.ewmservice.model.QComment;
 import ru.practicum.ewmservice.model.User;
 import ru.practicum.ewmservice.model.dto.CommentDto;
 import ru.practicum.ewmservice.model.dto.NewCommentDto;
 import ru.practicum.ewmservice.model.dto.UpdateCommentDto;
 import ru.practicum.ewmservice.storage.CommentRepository;
+import ru.practicum.ewmservice.util.CustomPageRequest;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,9 +34,14 @@ public class CommentService {
         return CommentMapper.toCommentDto(comment);
     }
 
-    public List<CommentDto> findByEventId(Long eventId) {
+    public List<CommentDto> findByEventId(Long eventId, Integer from, Integer size, String sortStr) {
         eventService.getEventById(eventId);
-        return commentRepository.findByEventId(eventId).stream()
+        BooleanExpression findCriteria = QComment.comment.eventId.eq(eventId);
+        Sort sort = "asc".equalsIgnoreCase(sortStr) ?
+                Sort.by("created").ascending() :
+                Sort.by("created").descending();
+        Pageable pageable = CustomPageRequest.of(from, size, sort);
+        return commentRepository.findAll(findCriteria, pageable).stream()
                 .map(CommentMapper::toCommentDto)
                 .collect(Collectors.toList());
     }
@@ -58,9 +68,14 @@ public class CommentService {
         return CommentMapper.toCommentDto(comment);
     }
 
-    public List<CommentDto> findByCommentator(Long userId) {
+    public List<CommentDto> findByCommentator(Long userId, Integer from, Integer size, String sortStr) {
         userService.getUserById(userId);
-        return commentRepository.findByCommentator_Id(userId).stream()
+        BooleanExpression findCriteria = QComment.comment.commentator.id.eq(userId);
+        Sort sort = "asc".equalsIgnoreCase(sortStr) ?
+                Sort.by("created").ascending() :
+                Sort.by("created").descending();
+        Pageable pageable = CustomPageRequest.of(from, size, sort);
+        return commentRepository.findAll(findCriteria, pageable).stream()
                 .map(CommentMapper::toCommentDto)
                 .collect(Collectors.toList());
     }
