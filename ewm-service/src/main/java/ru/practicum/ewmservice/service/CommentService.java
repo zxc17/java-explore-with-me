@@ -2,6 +2,7 @@ package ru.practicum.ewmservice.service;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -89,7 +90,12 @@ public class CommentService {
 
     @Transactional
     public void removeByAdmin(Long commentId) {
-        commentRepository.delete(getCommentById(commentId));
+        try {
+            commentRepository.deleteById(commentId);
+        } catch (EmptyResultDataAccessException e) {
+            throw new ValidationNotFoundException(String
+                    .format("Comment with id=%s not found.", commentId));
+        }
     }
 
     private Comment getComment(Long commentId) {
