@@ -89,7 +89,7 @@ public class EventController {
     @PatchMapping("/users/{userId}/events")
     public EventFullDto update(
             @PathVariable Long userId,
-            @RequestBody UpdateEventRequest updateEventRequest
+            @Validated @RequestBody UpdateEventRequest updateEventRequest
     ) {
         log.info("Endpoint 'Update event by initiator' " +
                 "RequestBody={}, userID={}.", updateEventRequest, userId);

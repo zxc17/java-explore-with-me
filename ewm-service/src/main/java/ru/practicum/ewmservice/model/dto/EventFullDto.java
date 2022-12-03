@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static ru.practicum.ewmservice.util.Constants.DATE_PATTERN;
 
@@ -35,4 +36,5 @@ public class EventFullDto {
     private String state;
     private String title;
     private Long views;
+    private List<CommentDto> comments;
 }

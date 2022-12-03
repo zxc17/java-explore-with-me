@@ -55,6 +55,9 @@ public class EventMapper {
                 .state(event.getState().toString())
                 .title(event.getTitle())
                 .views(Optional.ofNullable(views.get(event.getId())).orElse(0L))
+                .comments(Optional.ofNullable(event.getComments()).orElse(new ArrayList<>()).stream()
+                        .map(CommentMapper::toCommentDto)
+                        .collect(Collectors.toList()))
                 .build();
     }
 

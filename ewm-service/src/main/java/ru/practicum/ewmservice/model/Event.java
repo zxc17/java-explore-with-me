@@ -20,6 +20,7 @@ import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -95,9 +96,16 @@ public class Event {
     @JoinTable(
             name = "requests",
             joinColumns = @JoinColumn(name = "event_id"),
-            inverseJoinColumns = @JoinColumn(name = "requester_id")
-    )
+            inverseJoinColumns = @JoinColumn(name = "requester_id"))
     private List<User> confirmedMembers = new ArrayList<>();
+
+    @OneToMany
+    @JoinTable(
+            name = "comments",
+            joinColumns = @JoinColumn(name = "event_id"),
+            inverseJoinColumns = @JoinColumn(name = "comment_id"))
+    private List<Comment> comments = new ArrayList<>();
+
 
     @Override
     public boolean equals(Object o) {
